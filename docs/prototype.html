@@ -1,0 +1,578 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Reading Library</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;0,7..72,700;1,7..72,400&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/4.3.0/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+<style>
+:root{
+  --bg:#EEF1F0; --panel:#E4E9E7; --paper:#FFFFFF; --ink:#1C2529; --muted:#5C696E;
+  --line:#C8D1CE; --mark:#E4EE6A; --accent:#2F5D62; --chip:#DCE5E2; --danger:#A33A2B;
+  --serif:"Literata", Georgia, "Times New Roman", serif;
+  --sans:"DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#13191B; --panel:#192124; --paper:#1D2629; --ink:#E3E9EA; --muted:#93A2A7;
+    --line:#2F3B3F; --mark:#59621E; --accent:#8CC5C9; --chip:#25312F; --danger:#E5826F;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#13191B; --panel:#192124; --paper:#1D2629; --ink:#E3E9EA; --muted:#93A2A7;
+  --line:#2F3B3F; --mark:#59621E; --accent:#8CC5C9; --chip:#25312F; --danger:#E5826F;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px); height:100%}
+body{margin:0; height:100%; background:var(--bg); color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.45}
+button,input,select{font:inherit; color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+.app{display:grid; grid-template-columns:300px 1fr; height:100%}
+aside{background:var(--panel); border-right:1px solid var(--line); display:flex; flex-direction:column; min-height:0}
+.side-head{padding:20px 18px 12px}
+.side-head h1{font-family:var(--serif); font-weight:700; font-size:22px; margin:0 0 2px}
+.side-head p{margin:0; color:var(--muted); font-size:13px}
+.add{display:flex; gap:8px; padding:0 18px 12px}
+.btn{border:1px solid var(--line); background:var(--paper); border-radius:8px; padding:8px 12px; font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent); color:var(--paper); border-color:var(--accent)}
+.btn:disabled{opacity:.5; cursor:default}
+.search{margin:0 18px 10px; padding:8px 10px; border-radius:8px; border:1px solid var(--line); background:var(--paper); width:calc(100% - 36px)}
+.topics{list-style:none; margin:0; padding:4px 10px 12px; overflow:auto; flex:1}
+.topics li button{all:unset; display:block; width:100%; box-sizing:border-box; padding:10px 10px; border-radius:6px; cursor:pointer}
+.topics li button:hover{background:color-mix(in srgb, var(--paper) 60%, transparent)}
+.topics li button:focus-visible{outline:2px solid var(--accent)}
+.topics .t-title{font-family:var(--serif); font-size:15.5px; line-height:1.3}
+.topics li.on .t-title{background:linear-gradient(transparent 55%, var(--mark) 55%)}
+.topics .t-meta{color:var(--muted); font-size:12.5px; margin-top:3px}
+.side-foot{border-top:1px solid var(--line); padding:12px 18px; display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:13px; color:var(--muted)}
+.linkbtn{all:unset; cursor:pointer; color:var(--accent); font-weight:500}
+.linkbtn:focus-visible{outline:2px solid var(--accent)}
+
+main{overflow:auto; min-height:0; position:relative}
+.toolbar{position:sticky; top:0; z-index:5; display:flex; gap:8px; align-items:center; padding:10px 24px; background:var(--bg); border-bottom:1px solid var(--line)}
+.toolbar .spacer{flex:1}
+.back{display:none}
+.status{font-size:13px; color:var(--muted)}
+
+.sheet{max-width:780px; margin:28px auto 60px; background:var(--paper); border:1px solid var(--line); border-radius:4px; padding:56px 64px}
+article{font-family:var(--serif); font-size:17.5px; line-height:1.72; max-width:66ch}
+article h1.title{font-size:34px; line-height:1.18; margin:0 0 6px; font-weight:700}
+article h1.title span{background:linear-gradient(transparent 62%, var(--mark) 62%); box-decoration-break:clone; -webkit-box-decoration-break:clone}
+article .lede{color:var(--muted); font-style:italic; margin:0 0 30px; font-size:16.5px}
+article h2{font-size:23px; line-height:1.3; margin:38px 0 4px}
+article h3{font-size:19px; margin:26px 0 4px}
+article p, article ul, article ol{margin:0 0 14px}
+article li{margin:4px 0}
+article blockquote{margin:16px 0; padding:2px 0 2px 18px; border-left:3px solid var(--line); color:var(--muted)}
+article code{font-family:ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size:.86em; background:var(--chip); padding:1px 5px; border-radius:4px}
+article pre{background:var(--chip); padding:14px 16px; border-radius:6px; overflow-x:auto; font-size:14px; line-height:1.5}
+article pre code{background:none; padding:0}
+article table{border-collapse:collapse; width:100%; font-size:15px; margin:10px 0 18px; display:block; overflow-x:auto}
+article th, article td{border-bottom:1px solid var(--line); padding:7px 10px; text-align:left; vertical-align:top}
+article th{font-family:var(--sans); font-weight:600; font-size:13.5px}
+article img{max-width:100%}
+article .src{font-family:var(--sans); font-size:12.5px; color:var(--accent); margin:0 0 10px}
+.writing{color:var(--muted); font-family:var(--sans); font-size:14px}
+
+.sources{max-width:780px; margin:-40px auto 60px; padding:0 4px}
+.sources h2{font-size:14px; font-weight:600; margin:0 0 8px; color:var(--muted)}
+.src-row{display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; padding:10px 0; border-top:1px solid var(--line); font-size:14px}
+.src-row .name{font-weight:500; flex:1; min-width:160px; word-break:break-all}
+.src-row .date{color:var(--muted); font-size:12.5px}
+.src-row select{background:var(--paper); border:1px solid var(--line); border-radius:6px; padding:4px 6px; font-size:13px; max-width:200px}
+.src-row .danger{color:var(--danger)}
+.raw{width:100%; max-height:340px; overflow:auto; background:var(--panel); border-radius:6px; padding:12px; font-size:13px; white-space:pre-wrap; margin:4px 0 0}
+
+.empty{max-width:560px; margin:12vh auto; padding:0 24px; text-align:center}
+.drop{border:2px dashed var(--line); border-radius:12px; padding:48px 24px; background:var(--paper)}
+.drop h2{font-family:var(--serif); font-size:24px; margin:0 0 8px}
+.drop p{color:var(--muted); margin:0 0 18px}
+.overlay{position:fixed; inset:0; background:color-mix(in srgb, var(--bg) 85%, transparent); display:none; place-items:center; z-index:20; font-family:var(--serif); font-size:24px}
+.overlay.on{display:grid}
+.toast{position:fixed; left:50%; bottom:calc(20px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); background:var(--ink); color:var(--bg); padding:10px 16px; border-radius:8px; font-size:14px; max-width:90vw; z-index:30; display:none}
+.toast.on{display:block}
+.fatal{max-width:480px; margin:20vh auto; text-align:center; color:var(--muted); padding:0 24px}
+
+@media (max-width:760px){
+  .app{grid-template-columns:1fr}
+  aside{border-right:0}
+  main{display:none}
+  body.reading aside{display:none}
+  body.reading main{display:block}
+  .back{display:inline-block}
+  .toolbar{top:env(safe-area-inset-top,0px); padding:10px 14px; flex-wrap:wrap}
+  body.reading::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:10; background:var(--bg)}
+  .sheet{margin:0; border:0; border-radius:0; padding:28px 20px}
+  .sources{margin:0 auto 40px; padding:0 20px}
+  article{font-size:17px}
+  article h1.title{font-size:28px}
+}
+@media print{
+  :root{padding:0}
+  body{background:#fff; color:#000; height:auto}
+  .app{display:block}
+  aside, .toolbar, .sources, .overlay, .toast, .src, .no-print{display:none !important}
+  main{overflow:visible; display:block !important}
+  .sheet{border:0; margin:0; padding:0; max-width:none}
+  article{max-width:none; font-size:11.5pt}
+  article h2, article h3{break-after:avoid}
+  article pre, article table, article blockquote{break-inside:avoid}
+  article h1.title span{background:none}
+}
+@media (prefers-reduced-motion: reduce){*{transition:none !important}}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <aside>
+    <div class="side-head">
+      <h1>Reading Library</h1>
+      <p id="count">Loading your library…</p>
+    </div>
+    <div class="add">
+      <button class="btn primary" id="addBtn" disabled>Add .md notes</button>
+      <input type="file" id="file" accept=".md,.markdown,.txt,text/markdown" multiple hidden>
+    </div>
+    <input class="search" id="search" type="search" placeholder="Find a topic" aria-label="Find a topic">
+    <ul class="topics" id="topics"></ul>
+    <div class="side-foot">
+      <span id="busy" class="status"></span>
+      <button class="linkbtn" id="dlAll" hidden>Download all</button>
+    </div>
+  </aside>
+  <main id="main"></main>
+</div>
+<div class="overlay" id="overlay">Drop .md files to add them</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const S = {
+  db:null, sample:null, downloads:null, notesCol:null, topicsCol:null,
+  notes:new Map(), topics:new Map(), drafts:new Map(),
+  selected:null, busy:false, filter:"", loaded:{notes:false, topics:false},
+  openRaw:new Set(), confirmRemove:null, ready:false
+};
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+const fmtDate = t => t ? new Date(t).toLocaleDateString(undefined, {day:"numeric", month:"short", year:"numeric"}) : "";
+const titleFromName = n => n.replace(/\.(md|markdown|txt)$/i, "").replace(/[-_]+/g, " ").trim() || "Untitled";
+const slug = s => (s || "topic").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "topic";
+
+let toastTimer;
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove("on"), 5000); }
+function errText(e){
+  const c = e && e.code;
+  if (c === "not_granted") return "Claude isn’t allowed on this page. Allow it from the artifact’s Permissions menu, then try again.";
+  if (c === "rate_limited") return "Claude is busy. Wait a minute, then try again.";
+  if (c === "invalid_json") return "Claude’s sorting answer couldn’t be read. Try adding the files again.";
+  if (c === "quota_exceeded") return "Your library storage is full. Remove some notes to make room.";
+  return (e && e.message) ? "Something went wrong: " + e.message : "Something went wrong. Try again.";
+}
+function setBusy(on, msg=""){
+  S.busy = on; $("#busy").textContent = on ? msg : "";
+  $("#addBtn").disabled = on || !S.ready;
+  renderArticle();
+}
+function fatal(msg){ document.getElementById("app").innerHTML = `<div class="fatal">${esc(msg)}</div>`; }
+
+/* ---------- init ---------- */
+(async () => {
+  if (!window.claude) { fatal("Open this page in Claude to use your library."); return; }
+  const [db, user, sample, downloads] = await Promise.all(
+    ["db","user","sample","downloads"].map(n => window.claude.use(n).catch(() => null)));
+  if (!db || !user) { fatal("Sign in to Claude to keep a library on this page."); return; }
+  const uid = await user.id();
+  if (!uid) { fatal("Sign in to Claude to keep a library on this page."); return; }
+  S.db = db; S.sample = sample; S.downloads = downloads;
+  const root = db.doc(`data/users/${uid}/library`);
+  S.notesCol = root.collection("notes");
+  S.topicsCol = root.collection("topics");
+
+  const slow = setTimeout(() => {
+    if (!S.loaded.notes || !S.loaded.topics) $("#count").textContent = "Your library is slow to load. Check your connection and reopen the page.";
+  }, 10000);
+  S.notesCol.onSnapshot(snap => {
+    S.notes = new Map(snap.docs.map(d => [d.id, {id:d.id, ...d.data()}]));
+    S.loaded.notes = true; maybeReady(slow); render();
+  }, err => toast(errText(err)));
+  S.topicsCol.onSnapshot(snap => {
+    S.topics = new Map(snap.docs.map(d => [d.id, {id:d.id, ...d.data()}]));
+    S.loaded.topics = true; maybeReady(slow); render();
+  }, err => toast(errText(err)));
+})();
+function maybeReady(slow){
+  if (S.loaded.notes && S.loaded.topics && !S.ready){
+    clearTimeout(slow); S.ready = true; $("#addBtn").disabled = S.busy;
+    if (!S.sample) toast("Claude isn’t available here, so new notes can’t be organized. You can still read your library.");
+  }
+}
+
+/* ---------- rendering ---------- */
+function sortedTopics(){
+  return [...S.topics.values()].sort((a,b) => (b.updatedAt||0) - (a.updatedAt||0));
+}
+function notesFor(tid){ return [...S.notes.values()].filter(n => n.topicId === tid).sort((a,b) => (a.addedAt||0)-(b.addedAt||0)); }
+
+function render(){
+  const topics = sortedTopics();
+  const nNotes = S.notes.size;
+  $("#count").textContent = S.ready
+    ? (topics.length ? `${topics.length} topic${topics.length>1?"s":""} from ${nNotes} note${nNotes!==1?"s":""}` : "No topics yet")
+    : "Loading your library…";
+  $("#dlAll").hidden = !topics.some(t => t.markdown);
+  if (S.selected && !S.topics.has(S.selected)) { S.selected = null; document.body.classList.remove("reading"); }
+  const f = S.filter.trim().toLowerCase();
+  const list = topics.filter(t => !f || (t.title||"").toLowerCase().includes(f) || (t.summary||"").toLowerCase().includes(f));
+  $("#topics").innerHTML = list.map(t => {
+    const n = notesFor(t.id).length;
+    const meta = t.status === "writing" ? "Writing…" : t.status === "error" ? "Couldn’t write this page" : `${n} note${n!==1?"s":""}, updated ${fmtDate(t.updatedAt)}`;
+    return `<li class="${t.id===S.selected?"on":""}"><button data-id="${esc(t.id)}"><div class="t-title">${esc(t.title||"Untitled")}</div><div class="t-meta">${esc(meta)}</div></button></li>`;
+  }).join("") || (S.ready && topics.length ? `<li class="t-meta" style="padding:10px">No topics match.</li>` : "");
+  renderArticle();
+}
+
+function parseArticle(raw){
+  let text = raw || "";
+  let title = null, summary = "";
+  const t = text.match(/^\s*TITLE:\s*(.*)(\n|$)/);
+  if (t){ title = t[1].trim(); text = text.slice(t[0].length); }
+  const s = text.match(/^\s*SUMMARY:\s*(.*)(\n|$)/);
+  if (s){ summary = s[1].trim(); text = text.slice(s[0].length); }
+  text = text.replace(/^\s*---\s*\n/, "");
+  return {title, summary, body:text};
+}
+function bodyToHtml(body, names, withSources){
+  const out = (body||"").split("\n").map(line => {
+    const m = line.match(/^(#{2,4}\s+.*?)\s*\[\[([\d,\s]*)\]\]\s*$/);
+    if (!m) return line.replace(/\s*\[\[[\d,\s]*$/, "");
+    if (!withSources) return m[1];
+    const used = [...new Set(m[2].split(",").map(x => parseInt(x,10)).filter(x => x>0))]
+      .map(i => names[i-1]).filter(Boolean);
+    return m[1] + (used.length ? `\n\n<p class="src">From ${used.map(esc).join(", ")}</p>\n` : "");
+  }).join("\n");
+  return DOMPurify.sanitize(marked.parse(out));
+}
+
+function renderArticle(){
+  const main = $("#main");
+  if (!S.ready){ main.innerHTML = ""; return; }
+  const t = S.selected && S.topics.get(S.selected);
+  if (!t){
+    main.innerHTML = `<div class="empty"><div class="drop" id="drop">
+      <h2>${S.topics.size ? "Pick a topic, or add more notes" : "Start your library"}</h2>
+      <p>Add the .md summaries you write while reading. Notes on the same subject are merged into one page you can read and print.</p>
+      <button class="btn primary" data-act="add" ${S.busy?"disabled":""}>Choose .md files</button>
+      ${S.busy ? `<p class="status" style="margin:14px 0 0">${esc($("#busy").textContent)}</p>` : ""}
+    </div></div>`;
+    return;
+  }
+  const draft = S.drafts.get(t.id);
+  const live = draft !== undefined;
+  const parsed = live ? parseArticle(draft) : {title:t.title, summary:t.summary, body:t.markdown};
+  const sources = notesFor(t.id);
+  const names = live ? sources.map(n => n.name) : (t.sourceNames || []);
+  let content;
+  if (live && !draft) content = `<p class="writing">Writing this page from ${sources.length} note${sources.length!==1?"s":""}…</p>`;
+  else if (!parsed.body && t.status === "error") content = `<p class="writing">This page couldn’t be written. Use Rewrite page to try again.</p>`;
+  else if (!parsed.body) content = `<p class="writing">This page hasn’t been written yet. Use Rewrite page.</p>`;
+  else content = bodyToHtml(parsed.body, names, true);
+  const stale = !live && t.markdown && sources.map(n=>n.id).join() !== (t.sourceIds||[]).join();
+
+  const keepScroll = main.scrollTop;
+  main.innerHTML = `
+    <div class="toolbar">
+      <button class="btn back" data-act="back">Topics</button>
+      <span class="status">${live ? "Writing…" : t.truncated ? "This page was cut short. Rewrite it to try again." : stale ? "Notes changed since this page was written." : ""}</span>
+      <span class="spacer"></span>
+      <button class="btn" data-act="rewrite" ${S.busy||!S.sample?"disabled":""}>Rewrite page</button>
+      <button class="btn" data-act="print" ${live?"disabled":""}>Print</button>
+      <button class="btn" data-act="download" ${live||!t.markdown?"disabled":""}>Download HTML</button>
+    </div>
+    <div class="sheet"><article>
+      <h1 class="title"><span>${esc(parsed.title || t.title || "Untitled")}</span></h1>
+      ${parsed.summary ? `<p class="lede">${esc(parsed.summary)}</p>` : ""}
+      ${content}
+    </article></div>
+    <section class="sources no-print" aria-label="Source notes">
+      <h2>Built from ${sources.length} note${sources.length!==1?"s":""} (not printed)</h2>
+      ${sources.map(n => sourceRow(n, t.id)).join("")}
+    </section>`;
+  main.scrollTop = keepScroll;
+}
+function sourceRow(n, tid){
+  const others = sortedTopics().filter(x => x.id !== tid);
+  const confirming = S.confirmRemove === n.id;
+  return `<div class="src-row">
+    <span class="name">${esc(n.name)}</span>
+    <span class="date">added ${fmtDate(n.addedAt)}</span>
+    <button class="linkbtn" data-act="raw" data-id="${esc(n.id)}">${S.openRaw.has(n.id) ? "Hide" : "View"}</button>
+    <select data-act="move" data-id="${esc(n.id)}" ${S.busy||!S.sample?"disabled":""} aria-label="Move ${esc(n.name)} to another topic">
+      <option value="">Move to…</option>
+      <option value="__new">A new topic of its own</option>
+      ${others.map(o => `<option value="${esc(o.id)}">${esc(o.title||"Untitled")}</option>`).join("")}
+    </select>
+    <button class="linkbtn danger" data-act="remove" data-id="${esc(n.id)}" ${S.busy?"disabled":""}>${confirming ? "Confirm remove" : "Remove"}</button>
+    ${S.openRaw.has(n.id) ? `<pre class="raw">${esc(n.content)}</pre>` : ""}
+  </div>`;
+}
+
+/* ---------- events ---------- */
+$("#topics").addEventListener("click", e => {
+  const b = e.target.closest("button[data-id]"); if (!b) return;
+  S.selected = b.dataset.id; S.confirmRemove = null; document.body.classList.add("reading");
+  render(); $("#main").scrollTop = 0;
+});
+$("#search").addEventListener("input", e => { S.filter = e.target.value; render(); });
+$("#addBtn").addEventListener("click", () => $("#file").click());
+$("#file").addEventListener("change", e => { const f = e.target.files; if (f && f.length) addFiles(f); e.target.value = ""; });
+$("#dlAll").addEventListener("click", downloadAll);
+$("#main").addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if (!b || b.tagName === "SELECT") return;
+  const act = b.dataset.act, id = b.dataset.id;
+  if (act === "add") $("#file").click();
+  else if (act === "back"){ document.body.classList.remove("reading"); S.selected = null; render(); }
+  else if (act === "print"){ try { window.print(); } catch { toast("Printing isn’t available here. Use Download HTML and print the file."); } }
+  else if (act === "download") downloadTopic(S.topics.get(S.selected));
+  else if (act === "raw"){ S.openRaw.has(id) ? S.openRaw.delete(id) : S.openRaw.add(id); renderArticle(); }
+  else if (act === "rewrite") runJob(async () => { await synthesize(S.selected); }, "Rewriting page…");
+  else if (act === "remove"){
+    if (S.confirmRemove !== id){ S.confirmRemove = id; renderArticle(); return; }
+    S.confirmRemove = null; removeNote(id);
+  }
+});
+$("#main").addEventListener("change", e => {
+  const sel = e.target.closest("select[data-act='move']"); if (!sel || !sel.value) return;
+  moveNote(sel.dataset.id, sel.value);
+});
+let dragDepth = 0;
+window.addEventListener("dragenter", e => { if ([...(e.dataTransfer?.types||[])].includes("Files")){ dragDepth++; $("#overlay").classList.add("on"); } });
+window.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth-1); if (!dragDepth) $("#overlay").classList.remove("on"); });
+window.addEventListener("dragover", e => e.preventDefault());
+window.addEventListener("drop", e => {
+  e.preventDefault(); dragDepth = 0; $("#overlay").classList.remove("on");
+  if (e.dataTransfer?.files?.length) addFiles(e.dataTransfer.files);
+});
+
+/* ---------- jobs ---------- */
+async function runJob(fn, msg){
+  if (S.busy) return;
+  if (!S.sample){ toast("Claude isn’t available on this page, so pages can’t be written."); return; }
+  setBusy(true, msg);
+  try { await fn(); } catch (e) { toast(errText(e)); } finally { setBusy(false); render(); }
+}
+
+async function addFiles(fileList){
+  if (!S.ready) return;
+  if (S.busy){ toast("Wait for the current job to finish, then add more."); return; }
+  const files = [...fileList].filter(f => /\.(md|markdown|txt)$/i.test(f.name));
+  if (!files.length){ toast("Choose .md files."); return; }
+  await runJob(async () => {
+    const added = [];
+    for (const f of files){
+      const content = await f.text();
+      if (!content.trim()){ toast(`${f.name} is empty and was skipped.`); continue; }
+      if (content.length > 180000){ toast(`${f.name} is over 180 KB and was skipped. Split it into smaller notes.`); continue; }
+      const id = newId();
+      const note = {name:f.name, content, addedAt:Date.now(), topicId:null};
+      await S.notesCol.doc(id).set(note);
+      S.notes.set(id, {id, ...note}); added.push({id, ...note});
+    }
+    if (!added.length) return;
+    setBusy(true, "Sorting notes into topics…");
+    const assign = await classify(added);
+    for (const [nid, tid] of assign){
+      await S.notesCol.doc(nid).update({topicId:tid});
+      const n = S.notes.get(nid); if (n) S.notes.set(nid, {...n, topicId:tid});
+    }
+    const affected = [...new Set(assign.values())];
+    S.selected = affected[0]; document.body.classList.add("reading"); render();
+    let i = 0;
+    for (const tid of affected){
+      i++; setBusy(true, affected.length > 1 ? `Writing page ${i} of ${affected.length}…` : "Writing page…");
+      await synthesize(tid);
+    }
+  }, "Reading files…");
+}
+
+async function createTopic(title){
+  const id = newId();
+  const t = {title, summary:"", markdown:"", sourceNames:[], sourceIds:[], status:"writing", createdAt:Date.now(), updatedAt:Date.now()};
+  await S.topicsCol.doc(id).set(t);
+  S.topics.set(id, {id, ...t});
+  return id;
+}
+
+async function classify(newNotes){
+  const result = new Map();
+  const topics = sortedTopics();
+  if (!topics.length && newNotes.length === 1){
+    result.set(newNotes[0].id, await createTopic(titleFromName(newNotes[0].name)));
+    return result;
+  }
+  const keyed = newNotes.map((n,i) => ({key:"n"+(i+1), n}));
+  const prompt =
+`You sort notes into topics for a personal reading library. Each topic becomes one article.
+
+Existing topics:
+${topics.length ? topics.map(t => `- id: ${t.id}\n  title: ${t.title}\n  summary: ${t.summary || "(none)"}`).join("\n") : "(none yet)"}
+
+New notes:
+${keyed.map(k => `=== ${k.key} (file: ${k.n.name}) ===\n${k.n.content.slice(0, 4000)}`).join("\n\n")}
+
+Rules:
+- Put a note in an existing topic only if it covers substantially the same subject, so the two would read naturally as one article.
+- Otherwise give it a new topic. New notes about the same subject as each other share one new topic (use the identical title).
+- New topic titles are short, specific, in English.
+
+Reply with only JSON in this shape:
+{"assignments":[{"note":"n1","topic":"<existing topic id>"},{"note":"n2","new":"Title of a new topic"}]}`;
+  const out = await S.sample.json(prompt, {modelTier:"default"});
+  const list = Array.isArray(out?.assignments) ? out.assignments : [];
+  const made = new Map();
+  for (const k of keyed){
+    const a = list.find(x => x && x.note === k.key);
+    let tid;
+    if (a && a.topic && S.topics.has(a.topic)) tid = a.topic;
+    else {
+      const title = String((a && a.new) || titleFromName(k.n.name)).trim();
+      const norm = title.toLowerCase();
+      if (!made.has(norm)) made.set(norm, await createTopic(title));
+      tid = made.get(norm);
+    }
+    result.set(k.n.id, tid);
+  }
+  return result;
+}
+
+async function synthesize(tid){
+  const topic = S.topics.get(tid); if (!topic) return;
+  const sources = notesFor(tid);
+  if (!sources.length){
+    await S.topicsCol.doc(tid).delete(); S.topics.delete(tid);
+    if (S.selected === tid){ S.selected = null; document.body.classList.remove("reading"); }
+    render(); return;
+  }
+  await S.topicsCol.doc(tid).update({status:"writing"});
+  const prompt =
+`You are writing one page of a personal reading library. Below ${sources.length === 1 ? "is a note" : `are ${sources.length} notes`} the reader wrote while reading about one subject. Turn ${sources.length === 1 ? "it" : "them"} into a single well-organized article in English that reads smoothly from start to finish.
+
+How to write it:
+- Rewrite and reorganize; don't stitch notes end to end. Merge overlapping points and remove repetition.
+- Keep every substantive idea, fact, number, definition, example and reference from the notes. Don't add facts that aren't in the notes.
+- Where notes disagree, say so in the text.
+- Translate any non-English content into English (keep proper names and technical terms accurate).
+- Use Markdown: ## for sections, ### for subsections; lists, tables and code blocks only where they help. No # heading in the body.
+- End every ## and ### heading line with the numbers of the notes that section draws on, in double brackets, for example: ## How caching works [[1,3]]
+- Don't mention notes, files or the author in the article text.
+
+Reply in exactly this format:
+TITLE: <short, specific title>
+SUMMARY: <one sentence saying what the page covers>
+---
+<the article in Markdown>
+
+${sources.map((n,i) => `===== [${i+1}] file: ${n.name} =====\n${n.content}`).join("\n\n")}`;
+  S.drafts.set(tid, ""); if (S.selected === tid) renderArticle();
+  try {
+    const {text, truncated} = await S.sample(prompt, {
+      modelTier:"default", cache:false,
+      onText: ({text}) => { S.drafts.set(tid, text); if (S.selected === tid) renderArticle(); }
+    });
+    const p = parseArticle(text);
+    const patch = {
+      title: p.title || topic.title, summary: p.summary || "", markdown: p.body.trim(),
+      sourceNames: sources.map(n => n.name), sourceIds: sources.map(n => n.id),
+      status:"ready", truncated:!!truncated, updatedAt:Date.now()
+    };
+    await S.topicsCol.doc(tid).update(patch);
+    S.topics.set(tid, {...S.topics.get(tid), ...patch});
+  } catch (e) {
+    await S.topicsCol.doc(tid).update({status:"error"}).catch(() => {});
+    throw e;
+  } finally {
+    S.drafts.delete(tid); render();
+  }
+}
+
+async function removeNote(nid){
+  const n = S.notes.get(nid); if (!n) return;
+  const tid = n.topicId;
+  if (!S.sample){
+    if (S.busy) return;
+    setBusy(true, "Removing…");
+    try { await S.notesCol.doc(nid).delete(); S.notes.delete(nid); if (tid && !notesFor(tid).length){ await S.topicsCol.doc(tid).delete(); S.topics.delete(tid); } }
+    catch (e) { toast(errText(e)); } finally { setBusy(false); render(); }
+    return;
+  }
+  await runJob(async () => {
+    await S.notesCol.doc(nid).delete(); S.notes.delete(nid); S.openRaw.delete(nid);
+    if (tid){ setBusy(true, "Rewriting page…"); await synthesize(tid); }
+  }, "Removing…");
+}
+
+async function moveNote(nid, target){
+  const n = S.notes.get(nid); if (!n) return;
+  const from = n.topicId;
+  await runJob(async () => {
+    const to = target === "__new" ? await createTopic(titleFromName(n.name)) : target;
+    await S.notesCol.doc(nid).update({topicId:to});
+    S.notes.set(nid, {...n, topicId:to});
+    S.selected = to; render();
+    setBusy(true, "Rewriting pages…");
+    await synthesize(to);
+    if (from) await synthesize(from);
+  }, "Moving note…");
+}
+
+/* ---------- printable files ---------- */
+const PRINT_CSS = `
+body{margin:0;background:#fff;color:#1C2529;font-family:"Literata",Georgia,"Times New Roman",serif;font-size:17px;line-height:1.7}
+main{max-width:46em;margin:48px auto;padding:0 24px}
+h1{font-size:32px;line-height:1.2;margin:0 0 6px}
+.lede{color:#5C696E;font-style:italic;margin:0 0 28px}
+h2{font-size:22px;margin:34px 0 6px} h3{font-size:18px;margin:24px 0 4px}
+p,ul,ol{margin:0 0 13px} li{margin:4px 0}
+blockquote{margin:14px 0;padding-left:16px;border-left:3px solid #C8D1CE;color:#5C696E}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.86em;background:#EEF1F0;padding:1px 4px;border-radius:3px}
+pre{background:#EEF1F0;padding:12px 14px;border-radius:5px;overflow-x:auto;font-size:13.5px;line-height:1.5}
+pre code{background:none;padding:0}
+table{border-collapse:collapse;width:100%;font-size:15px;margin:8px 0 16px}
+th,td{border-bottom:1px solid #C8D1CE;padding:6px 9px;text-align:left;vertical-align:top}
+th{font-family:"DM Sans",system-ui,sans-serif;font-size:13px}
+img{max-width:100%}
+.topic + .topic{break-before:page;margin-top:64px}
+.toc{margin:0 0 40px} .toc li{margin:6px 0}
+@media print{main{margin:0;max-width:none;padding:0} body{font-size:11.5pt} h2,h3{break-after:avoid} pre,table,blockquote{break-inside:avoid}}`;
+function topicSection(t){
+  return `<section class="topic" id="${slug(t.title)}"><h1>${esc(t.title||"Untitled")}</h1>${t.summary?`<p class="lede">${esc(t.summary)}</p>`:""}${bodyToHtml(t.markdown, t.sourceNames||[], false)}</section>`;
+}
+function wrapDoc(title, inner){
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title><link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,700;1,7..72,400&family=DM+Sans:wght@600&display=swap" rel="stylesheet"><style>${PRINT_CSS}</style></head><body><main>${inner}</main></body></html>`;
+}
+async function save(filename, html){
+  if (!S.downloads){ toast("Downloads aren’t available here. Use Print instead."); return; }
+  try { await S.downloads.save({filename, data:html}); }
+  catch (e) { if (e && e.code !== "declined") toast(e.code === "rate_limited" ? "A download is already waiting for you to confirm." : "The file couldn’t be saved here."); }
+}
+function downloadTopic(t){ if (t && t.markdown) save(`${slug(t.title)}.html`, wrapDoc(t.title, topicSection(t))); }
+function downloadAll(){
+  const ts = sortedTopics().filter(t => t.markdown).sort((a,b) => (a.title||"").localeCompare(b.title||""));
+  if (!ts.length) return;
+  const toc = `<h1>Reading Library</h1><ul class="toc">${ts.map(t => `<li><a href="#${slug(t.title)}">${esc(t.title)}</a></li>`).join("")}</ul>`;
+  save("reading-library.html", wrapDoc("Reading Library", `<section class="topic">${toc}</section>` + ts.map(topicSection).join("")));
+}
+</script>
+</body>
+</html>
